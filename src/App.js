@@ -49,7 +49,9 @@ export default function App() {
 
 function HomeRoute() {
   const location = useLocation();
-  return <Home jwtData={location.state.data} />
+  const state_data = location.state ? location.state.data : null;
+  if (location.state == null) return <h1>Not logged in</h1>;
+  return <Home jwtData={state_data} />
 }
 
 function Login() {
@@ -63,7 +65,8 @@ function Login() {
     client_id: client_id,
     scope: scope,
     redirect_uri: redirect_uri,
-    state: state
+    state: state,
+    scope: 'user-library-read user-top-read'
   }
   const queryString = Object.keys(queryObj).map(key => key + '=' + queryObj[key]).join('&');
   console.log(queryString);

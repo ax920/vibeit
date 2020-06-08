@@ -20,22 +20,44 @@ export default class Home extends React.Component {
         }
     }
     componentDidMount() {
-        const top_tracks_url = 'https://api.spotify.com/v1/me/top/tracks';
-        const saved_tracks_url = 'https://api.spotify.com/v1/me/tracks';
+        const get_top_tracks_url = 'https://api.spotify.com/v1/me/top/tracks';
+        const get_saved_tracks_url = 'https://api.spotify.com/v1/me/tracks';
         if (localStorage.getItem('all songs') === null) {
-            this.getAllSavedTracks(saved_tracks_url, 50, 0);
+            this.getAllSavedTracks(get_saved_tracks_url, 50, 0);
         } else {
             this.state.allSongs = JSON.parse(localStorage.getItem('all songs') || "[]");
         }
-        this.getTopTracks(top_tracks_url); // TODO set it to localstorage as well so don't have to do everytime
+        this.getTopTracks(get_top_tracks_url); // TODO set it to localstorage as well so don't have to do everytime
         console.log(this.state.allSongs)
         console.log(JSON.parse(localStorage.getItem('all songs')));
-        // let users = JSON.parse(localStorage.getItem("all songs") || "[]");
-        // console.log(users)
+        this.mapFeaturesToSavedTracks();
+    }
+
+    mapFeaturesToSavedTracks() {
+        const get_features_several_url = 'https://api.spotify.com/v1/audio-features';
+        for (let i = 0; i < Math.ceil(this.state.allSongs.length / 100); i++) {
+            let ids = [];
+            const index = i * 100;
+            const currSongs = this.state.allSongs.slice(index, index + 100);
+            currSongs.map(song => {
+                ids.push(song.id);
+            });
+            console.log(ids.length)
+            ids = ids.join(",")
+            axios.get(get_features_several_url, {
+                headers: {
+                    'Authorization': 'Bearer ' + this.state.jwt.access_token
+                },
+                params: {
+                    ids: ids
+                }
+            }).then(response => {
+                console.log(response.data);
+            })
+        }
     }
 
     getAllSavedTracks(saved_tracks_url, limit, offset) {
-        console.log(offset);
         axios.get(saved_tracks_url, {
             headers: {
                 'Authorization': 'Bearer ' + this.state.jwt.access_token
@@ -87,7 +109,7 @@ export default class Home extends React.Component {
                 offset: 0
             }
         }).then(response => {
-            console.log("FIRST", response.data.items);
+            // console.log("FIRST", response.data.items);
             const songs = response.data.items;
             songs.map(song => {
                 this.setState(prevState => ({
@@ -105,7 +127,7 @@ export default class Home extends React.Component {
                     offset: 50
                 }
             }).then(response => {
-                console.log("SECOND", response.data.items);
+                // console.log("SECOND", response.data.items);
                 const songs = response.data.items;
                 songs.map((song, index) => {
                     if (index !== 0) {
@@ -116,7 +138,6 @@ export default class Home extends React.Component {
                     }
 
                 });
-                console.log(this.state.topSongs);
                 axios.get(top_tracks_url, {
                     headers: {
                         'Authorization': 'Bearer ' + this.state.jwt.access_token
@@ -126,7 +147,7 @@ export default class Home extends React.Component {
                         offset: 100
                     }
                 }).then(response => {
-                    console.log("THIRD", response.data.items);
+                    // console.log("THIRD", response.data.items);
                     const songs = response.data.items;
                     songs.map((song, index) => {
                         if (index !== 0) {
@@ -137,7 +158,6 @@ export default class Home extends React.Component {
                         }
 
                     });
-                    console.log(this.state.topSongs);
                 });
             });
         });

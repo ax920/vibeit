@@ -1,6 +1,7 @@
 import React from 'react';
 import { useHistory } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import * as Moods from './Moods'
 import {
     ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts';
@@ -20,24 +21,17 @@ export default class Home extends React.Component {
             },
             topSongs: [],
             allSongs: [],
-            audioTrackFeatures: []
+            topTrackFeatures: [],
+            songsToAdd: [] // Clear upon creation of playlist
         }
     }
     async componentDidMount() {
         const openRequest = window.indexedDB.open('toDoList');
         const get_saved_tracks_url = 'https://api.spotify.com/v1/me/tracks';
-        // if (localStorage.getItem('all songs') === null) {
         console.log('access token', this.state.jwt.access_token)
-        this.getAllSavedTracks(get_saved_tracks_url, 50, 0);
-        // } else {
-        // this.state.allSongs = JSON.parse(localStorage.getItem('all songs') || "[]");
-        // }
-        this.getTopTracks(); // TODO set it to localstorage as well so don't have to do everytime
-        // await this.mapFeaturesToSavedTracks(0);
-        // if (localStorage.getItem('feature 1') === null) {
-        // } else {
-        //     console.log(JSON.parse(localStorage.getItem('all songs') || "[]")); // TODO parse into state
-        // }
+        this.getPlaylistSongs();
+        // this.getAllSavedTracks(get_saved_tracks_url, 50, 0);
+        this.getTopTracks();
     }
 
     getTopTracks() {
@@ -51,7 +45,7 @@ export default class Home extends React.Component {
                 offset: 0
             }
         }).then(response => {
-            // console.log("FIRST", response.data.items);
+            console.log("1", response)
             const songs = response.data.items;
             songs.map(song => {
                 this.setState(prevState => ({
@@ -59,99 +53,7 @@ export default class Home extends React.Component {
                     topSongs: [...prevState.topSongs, song]
                 }))
             });
-            axios.get(get_top_tracks_url, {
-                headers: {
-                    'Authorization': 'Bearer ' + this.state.jwt.access_token
-                },
-                params: {
-                    limit: 100,
-                    offset: 50
-                }
-            }).then(response => {
-                // console.log("SECOND", response.data.items);
-                const songs = response.data.items;
-                songs.map((song, index) => {
-                    if (index !== 0) {
-                        this.setState(prevState => ({
-                            jwt: prevState.jwt,
-                            topSongs: [...prevState.topSongs, song]
-                        }))
-                    }
-                });
-                axios.get(get_top_tracks_url, {
-                    headers: {
-                        'Authorization': 'Bearer ' + this.state.jwt.access_token
-                    },
-                    params: {
-                        limit: 150,
-                        offset: 100
-                    }
-                }).then(response => {
-                    // console.log("THIRD", response.data.items);
-                    const songs = response.data.items;
-                    songs.map((song, index) => {
-                        if (index !== 0) {
-                            this.setState(prevState => ({
-                                jwt: prevState.jwt,
-                                topSongs: [...prevState.topSongs, song]
-                            }))
-                        }
-                    });
-                    console.log("top tracks", this.state.topSongs);
-                    this.mapFeaturesToTopTracks(0);
-                });
-            });
-        });
-    }
-
-    mapFeaturesToSavedTracks(offset) {
-        const get_features_several_url = 'https://api.spotify.com/v1/audio-features';
-        let ids = [];
-        // for (let i = 0; i < Math.ceil(this.state.allSongs.length / 100); i++) {
-        // const index = i * 100;
-        const currSongs = this.state.allSongs.slice(offset, offset + 100);
-        currSongs.map(song => {
-            ids.push(song.id);
-        });
-        // }
-        ids = ids.join(",")
-        axios.get(get_features_several_url, {
-            headers: {
-                'Authorization': 'Bearer ' + this.state.jwt.access_token
-            },
-            params: {
-                ids: ids
-            }
-        }).then(response => {
-            const features = response.data.audio_features;
-            features.map(feature => {
-                this.setState(prevState => ({
-                    jwt: prevState.jwt,
-                    topSongs: [...prevState.topSongs],
-                    allSongs: [...prevState.allSongs],
-                    audioTrackFeatures: [...prevState.audioTrackFeatures, feature]
-                }));
-            });
-            if (features.length == 0 || response.data.audio_features.length == 1) {
-                let tempCopyFeatures = [...this.state.audioTrackFeatures];
-                tempCopyFeatures = tempCopyFeatures.slice(0, -1);
-                this.setState(prevState => ({
-                    jwt: prevState.jwt,
-                    topSongs: [...prevState.topSongs],
-                    allSongs: [...prevState.allSongs],
-                    audioTrackFeatures: tempCopyFeatures
-                }));
-                console.log(this.state.audioTrackFeatures)
-                const indices = Math.ceil(this.state.audioTrackFeatures.length / 50);
-                let currentAllFeatures = this.state.audioTrackFeatures;
-                // for (let i = 0; i < indices; i++) {
-                //     const division = currentAllFeatures.slice(0, (i + 1) * 50);
-                //     localStorage.setItem("features " + i, JSON.stringify(division));
-                // }
-                return;
-            } else {
-                this.mapFeaturesToSavedTracks(offset + 100);
-            }
+            this.mapFeaturesToTopTracks(0);
         });
     }
 
@@ -180,34 +82,26 @@ export default class Home extends React.Component {
                     jwt: prevState.jwt,
                     topSongs: [...prevState.topSongs],
                     allSongs: [...prevState.allSongs],
-                    audioTrackFeatures: [...prevState.audioTrackFeatures, feature]
+                    topTrackFeatures: [...prevState.topTrackFeatures, feature]
                 }));
             });
             if (features.length == 0 || response.data.audio_features.length == 1) {
-                let tempCopyFeatures = [...this.state.audioTrackFeatures];
+                let tempCopyFeatures = [...this.state.topTrackFeatures];
                 tempCopyFeatures = tempCopyFeatures.slice(0, -1);
                 this.setState(prevState => ({
                     jwt: prevState.jwt,
                     topSongs: [...prevState.topSongs],
                     allSongs: [...prevState.allSongs],
-                    audioTrackFeatures: tempCopyFeatures
+                    topTrackFeatures: tempCopyFeatures
                 }));
-                console.log("toptracks features", this.state.audioTrackFeatures.map(track => track.danceability));
-                const indices = Math.ceil(this.state.audioTrackFeatures.length / 50);
-                let currentAllFeatures = this.state.audioTrackFeatures;
-                // for (let i = 0; i < indices; i++) {
-                //     const division = currentAllFeatures.slice(0, (i + 1) * 50);
-                //     localStorage.setItem("features " + i, JSON.stringify(division));
-                // }
-
+                console.log("toptracks features", this.state.topTrackFeatures);
                 this.state.topSongs.map((song, i) => {
-                    console.log(song, i)
-                    const matchingFeature = this.state.audioTrackFeatures.find((feature, j) => {
+                    const matchingFeature = this.state.topTrackFeatures.find((feature, j) => {
                         return feature.id === song.id;
                     });
                     song.features = matchingFeature;
                 })
-                this.getUpbeat();
+                this.appendTracksToAdd(Moods.WORKOUT);
                 return;
             } else {
                 this.mapFeaturesToTopTracks(offset + 100);
@@ -215,8 +109,12 @@ export default class Home extends React.Component {
         });
     }
 
-    getUpbeat() {
-
+    appendTracksToAdd(mood) {
+        console.log(this.state.topSongs);
+        const sorted = this.state.topSongs.sort(function (a, b) {
+            return b.features[mood] - a.features[mood];
+        });
+        console.log(sorted) // NICEIIEIEIE  OSRTED SHESHRHERHERHEHR
     }
 
     getAllSavedTracks(saved_tracks_url, limit, offset) {
@@ -259,41 +157,86 @@ export default class Home extends React.Component {
         })
     }
 
-    // getPlaylistSongs() {
-    //     axios.get(saved_tracks_url, {
-    //         headers: {
-    //             'Authorization': 'Bearer ' + this.state.jwt.access_token
-    //         },
-    //         params: {
-    //             limit: limit,
-    //             offset: offset
-    //         }
-    //     }).then(response => {
+    mapFeaturesToSavedTracks(offset) {
+        const get_features_several_url = 'https://api.spotify.com/v1/audio-features';
+        let ids = [];
+        // for (let i = 0; i < Math.ceil(this.state.allSongs.length / 100); i++) {
+        // const index = i * 100;
+        const currSongs = this.state.allSongs.slice(offset, offset + 100);
+        currSongs.map(song => {
+            ids.push(song.id);
+        });
+        // }
+        ids = ids.join(",")
+        axios.get(get_features_several_url, {
+            headers: {
+                'Authorization': 'Bearer ' + this.state.jwt.access_token
+            },
+            params: {
+                ids: ids
+            }
+        }).then(response => {
+            const features = response.data.audio_features;
+            features.map(feature => {
+                this.setState(prevState => ({
+                    jwt: prevState.jwt,
+                    topSongs: [...prevState.topSongs],
+                    allSongs: [...prevState.allSongs],
+                    topTrackFeatures: [...prevState.topTrackFeatures, feature]
+                }));
+            });
+            if (features.length == 0 || response.data.audio_features.length == 1) {
+                let tempCopyFeatures = [...this.state.topTrackFeatures];
+                tempCopyFeatures = tempCopyFeatures.slice(0, -1);
+                this.setState(prevState => ({
+                    jwt: prevState.jwt,
+                    topSongs: [...prevState.topSongs],
+                    allSongs: [...prevState.allSongs],
+                    topTrackFeatures: tempCopyFeatures
+                }));
+                console.log(this.state.topTrackFeatures)
+                const indices = Math.ceil(this.state.topTrackFeatures.length / 50);
+                let currentAllFeatures = this.state.topTrackFeatures;
+                // for (let i = 0; i < indices; i++) {
+                //     const division = currentAllFeatures.slice(0, (i + 1) * 50);
+                //     localStorage.setItem("features " + i, JSON.stringify(division));
+                // }
+                return;
+            } else {
+                this.mapFeaturesToSavedTracks(offset + 100);
+            }
+        });
+    }
 
-    //     });
-    // }
+    getPlaylistSongs() {
+        axios.get('https://api.spotify.com/v1/playlists/3Iq4kzgB5UDkf0zQEn0TqU/tracks', {
+            headers: {
+                'Authorization': 'Bearer ' + this.state.jwt.access_token
+            },
+        }).then(response => {
+            console.log(response);
+        });
+    }
 
     render() {
-        // console.log("test", this.state.audioTrackFeatures)
-        if (!this.state.audioTrackFeatures || this.state.audioTrackFeatures.length <= 0) {
+        if (!this.state.topTrackFeatures || this.state.topTrackFeatures.length <= 0) {
             return (<h1>Loading...</h1>)
         }
-        const features = this.state.audioTrackFeatures;
+        const features = this.state.topTrackFeatures;
         const array = [];
         for (let i = 0; i < features.length; i++) {
             if (features[i]) {
-                array.push({ x: i, y: features[i].danceability });
+                array.push({ x: i, y: features[i].valence });
             }
         }
-        console.log("array", array);
         return (
             <React.Fragment>
-                <h1>this is home</h1>
+                <h1>Stats</h1>
                 <ScatterChart width={400} height={400} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                     <CartesianGrid />
-                    <XAxis dataKey={'x'} type="number" name='stature' unit='cm' />
-                    <YAxis dataKey={'y'} type="number" name='weight' unit='kg' />
-                    <Scatter name='A school' data={array} fill='#8884d8' />
+                    <XAxis dataKey={'x'} type="number" name='stature' unit='id' />
+                    <YAxis dataKey={'y'} type="number" name='weight' unit='' />
+                    <Scatter name='Playlist Statistics' data={array} fill='#8884d8' />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                 </ScatterChart>
             </React.Fragment>
